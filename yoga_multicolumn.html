@@ -1,0 +1,1003 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>20250920 Yoga — 多欄顯示</title>
+  <style>
+    :root{--columns:1;--base-font:20px;--min-font:6px}
+    html,body{height:100%;margin:0;background:#f7f7f8;font-family:-apple-system,BlinkMacSystemFont,'Noto Sans TC','Microsoft JhengHei',Roboto,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    .page{box-sizing:border-box;width:100vw;height:100vh;padding:68px 40px 28px 40px;display:block;overflow:hidden}
+    .sheet{height:100%;column-count:var(--columns);column-width:auto;column-gap:20px;column-fill:auto;background:linear-gradient(180deg,rgba(255,255,255,0.95),rgba(250,250,252,0.95));padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.06);border-radius:10px;overflow:auto;font-size:var(--base-font);line-height:1.45;column-rule:none}
+
+    .sheet * {
+      box-sizing: border-box;
+    }
+    h1{font-size:1.25em;margin:0 0 8px 0;break-inside:avoid}
+    h2{font-size:0.98em;margin:6px 0 6px 0}
+    ul,ol{margin:4px 0 12px 0;padding-left:1.1em;list-style-position:inside}
+    li{margin:4px 0}
+    h1,h2,li{break-inside:avoid-column}
+
+    li::marker {
+      display: inline-block;
+      width: auto;
+    }
+
+    ol li, ul li {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* Chrome 瀏覽器多欄佈局 ::marker 修復 */
+    @supports (column-count: 1) {
+      ol {
+        counter-reset: list-counter;
+      }
+
+      ol li {
+        list-style: none;
+        counter-increment: list-counter;
+        position: relative;
+      }
+
+      ol li::before {
+        content: counter(list-counter) ". ";
+        font-weight: normal;
+        margin-right: 0.5em;
+      }
+    }
+
+    @page{size:landscape}
+
+    .toolbar{position:fixed;top:8px;left:8px;right:8px;background:rgba(255,255,255,0.95);border-radius:8px;padding:6px 8px;box-shadow:0 6px 18px rgba(0,0,0,0.08);z-index:100;display:flex;gap:8px;align-items:center;font-size:13px;flex-wrap:wrap}
+    .toolbar label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+    .toolbar select,.toolbar button,.toolbar input{font-size:13px;padding:6px;border-radius:6px;border:1px solid #e6e6e9;background:#fff;cursor:pointer;min-width:0}
+    .toolbar button[aria-pressed="true"]{background:#eaf3ff;border-color:#cfe6ff}
+
+    .toolbar-narrow{display:none;position:fixed;top:8px;left:8px;right:8px;background:rgba(255,255,255,0.95);border-radius:8px;padding:4px 6px;box-shadow:0 6px 18px rgba(0,0,0,0.08);z-index:100;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center;transition:transform 0.3s ease}
+    .toolbar-narrow button{font-size:14px;padding:8px;border-radius:6px;border:1px solid #e6e6e9;background:#fff;cursor:pointer;min-width:36px;height:36px;display:flex;align-items:center;justify-content:center}
+    .toolbar-narrow button[aria-pressed="true"]{background:#eaf3ff;border-color:#cfe6ff}
+    .toolbar-narrow.hidden{transform:translateY(-100%)}
+    .toolbar-narrow.minimized{transform:translateY(-80%)}
+
+    @media(max-width:768px){
+      .toolbar{display:none}
+      .toolbar-narrow{display:flex}
+      .page{padding:60px 16px 16px 16px;transition:padding 0.3s ease}
+      .page.toolbar-hidden{padding:16px 16px 16px 16px}
+    }
+
+    @media(max-width:480px){
+      .page{padding:60px 8px 8px 8px}
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 8px 12px;
+        touch-action: manipulation;
+      }
+
+      .sheet {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        touch-action: pan-y pinch-zoom;
+      }
+
+      .toolbar-narrow button {
+        min-height: 48px;
+        min-width: 48px;
+        font-size: 16px;
+      }
+
+      body {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+    }
+
+    .sheet:active {
+      background-color: rgba(0,0,0,0.02);
+    }
+
+    /* Memory styles */
+    .memorized {
+      opacity: 0.6;
+      text-decoration: line-through;
+      background-color: rgba(0, 200, 0, 0.1);
+    }
+
+    .hidden-line {
+      display: none !important;
+    }
+
+    .completed-last {
+      color: red !important;
+      font-weight: bold !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="toolbar" aria-label="文件控制">
+      <button id="colBtn" title="切換欄數 (快捷鍵 1-6)">📑 1欄</button>
+
+      <label>🔤
+        <input type="number" id="fontPreset" title="字型大小 (快捷鍵 +/-)" value="20" min="6" max="128" step="1" style="width: 60px;">
+      </label>
+
+      <button id="fontDecBtn" title="縮小字型 (快捷鍵 -)">-</button>
+      <button id="fontIncBtn" title="放大字型 (快捷鍵 +)">+</button>
+
+      <button id="memBtn" aria-pressed="false" title="切換默背模式：按一次隱藏全部，再按空白或 M 顯示下一行">📖 默背模式 (M / Space)</button>
+      <button id="autoPlaySlowBtn" title="自動播放減速">🐌</button>
+      <button id="autoPlayBtn" aria-pressed="false" title="自動播放默背模式 — 快捷鍵 A">▶️ 自動播放 120♩ (A)</button>
+      <button id="autoPlayFastBtn" title="自動播放加速">🐰</button>
+      <button id="resetMemBtn" title="重置默背並顯示全部 — 快捷鍵 R">🔄 重置 (R)</button>
+      <button id="copyBtn" title="複製全部內容到剪貼簿 — 快捷鍵 C">📋 複製全部 (C)</button>
+      <button id="helpBtn" title="顯示使用說明">❓ 說明</button>
+    </nav>
+
+    <!-- 窄螢幕專用工具列 -->
+    <nav class="toolbar-narrow" aria-label="文件控制">
+      <button id="toggleToolbarBtn" title="切換工具列顯示" style="position: absolute; right: 8px; top: 4px; padding: 4px 8px; font-size: 12px;">⚙️</button>
+      <button id="colBtnNarrow" title="切換欄數">📑</button>
+      <button id="fontDecBtnNarrow" title="縮小字型">🔤-</button>
+      <button id="fontIncBtnNarrow" title="放大字型">🔤+</button>
+      <button id="memBtnNarrow" aria-pressed="false" title="默背模式">📖</button>
+      <button id="autoPlaySlowBtnNarrow" title="減速">🐌</button>
+      <button id="autoPlayBtnNarrow" aria-pressed="false" title="自動播放">▶️120♩</button>
+      <button id="autoPlayFastBtnNarrow" title="加速">🐰</button>
+      <button id="resetMemBtnNarrow" title="重置">🔄</button>
+      <button id="copyBtnNarrow" title="複製">📋</button>
+      <button id="helpBtnNarrow" title="說明">❓</button>
+    </nav>
+
+    <div id="sheet" class="sheet">
+    </div>
+  </div>
+
+  <script>
+    // Markdown content for yoga practice
+    const yogaContent = `# 20250920 Yoga
+
+## A 00:00 8個8拍(前奏)
+1. 音樂開始5678
+2. 22345678
+3. 外手合十5678
+4. 內手合十5678
+5. 中間合掌5678
+6. 轉向345678
+7. 手上34後彎78
+8. 手上34合十78
+
+## B 00:30 16個8拍(人聲)
+1. 座椅345678
+2. 站姿前彎5678
+3. 吸氣頭抬吐氣前彎
+4. 後跳下犬5678
+5. 平板34趴下78
+6. 蛇式34下犬78
+7. 右腳後抬前跨78
+8. 上英雄一5678
+9. 手下34下犬78
+10. 平板34趴下78
+11. 蛇式34下犬78
+12. 左腳後抬前跨78
+13. 上英雄一5678
+14. 手下34下犬78
+15. 前跳34前彎78
+16. 座椅345678
+
+## C 01:30 8個8拍(重人聲) 站姿
+1. 雙手劃開山式回正
+2. 雙手向上5678
+3. 左側彎曲5678
+4. 左側彎回5678
+5. 手下3456插腰
+6. 左膝前抬左膝外開
+7. 合十345678
+8. 手上34手下腳下
+
+## D 01:59 2個8拍(無人聲)變換隊形
+1. 轉135面向前面
+2. 轉24排面向後面
+
+## E 02:05 16個8拍(人聲)
+1. 座椅345678
+2. 站姿前彎5678
+3. 吸氣頭抬吐氣前彎
+4. 後跳下犬5678
+5. 平板34趴下78
+6. 蛇式34下犬78
+7. 右腳後抬前跨78
+8. 上英雄一5678
+9. 手下34下犬78
+10. 平板34趴下78
+11. 蛇式34下犬78
+12. 左腳後抬前跨78
+13. 上英雄一5678
+14. 手下34下犬78
+15. 前跳34前彎78
+16. 座椅345678
+
+## F 03:05 8個8拍(重人聲) 站姿
+1. 雙手劃開山式回正
+2. 雙手向上5678
+3. 右側彎曲5678
+4. 右側彎回5678
+5. 手下3456插腰
+6. 右膝前抬右膝外開
+7. 合十345678
+8. 手上34手下腳下
+
+## G 03:35 10個8拍(節奏無人聲)
+1. 雙手向上5678
+2. 站姿前彎5678
+3. 右腳左腳準備嬰兒 / 烏鴉預備5678
+4. 嬰兒1次5678      / 烏鴉上去5678
+5. 嬰兒2次5678      / 烏鴉停住5678
+6. 下犬1次5678      / 中間嬰兒5678
+7. 下犬2次5678      / 中間嬰兒5678
+8. 下犬34平板78
+9. 趴下345678
+10. 蛇式345678
+
+## H 04:11 10個8拍(微震撼無人聲)
+1. 下犬345678
+2. 內跨34轉外78     # 內跨指近中間
+3. 吸氣頭抬吐氣前彎
+4. 前手插腰前手展開
+5. 手下345678
+6. 後手插腰後手展開
+7. 手下345678
+8. 後轉34收腳78
+9. 蹲234抱躺78
+10. 預備輪式5678
+
+## I 04:48 10個8拍(微震撼無人聲)
+1. 上2345678  # 135排橋式, 24排輪式
+2. 撐住34下678
+3. 抱腳345678
+4. 前滾站起5678
+5. 走位345678
+6. 雙人下犬5678
+7. 倒立準備5678
+8. 上2345678
+9. 撐住345678
+10. 右下左下對齊站起  # 同時合十
+
+---
+**結束**`;
+
+    function parseMarkdownToHTML(markdown) {
+      let html = '';
+      const lines = markdown.split('\n');
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (line.startsWith('# ')) {
+          html += `<h1>${line.substring(2)}</h1>\n`;
+        } else if (line.startsWith('## ')) {
+          html += `<h2>${line.substring(3)}</h2>\n`;
+        } else if (/^\d+\./.test(line)) {
+          // Start or continue ordered list
+          if (i === 0 || !(/^\d+\./.test(lines[i-1].trim()))) {
+            html += '<ol>\n';
+          }
+          html += `<li>${line.replace(/^\d+\.\s*/, '')}</li>\n`;
+          // Check if next line is not a list item
+          if (i === lines.length - 1 || !(/^\d+\./.test(lines[i+1].trim()))) {
+            html += '</ol>\n';
+          }
+        } else if (line === '---') {
+          // Skip horizontal rules in markdown
+        } else if (line.startsWith('**') && line.endsWith('**')) {
+          html += `<h2 id="endMarker" style="text-align: center; color: #888; margin-top: 30px;">— ${line.slice(2, -2)} —</h2>\n`;
+        } else if (line === '') {
+          // Skip empty lines
+        }
+      }
+
+      return html;
+    }
+
+    function loadContentFromMarkdown() {
+      const contentHTML = parseMarkdownToHTML(yogaContent);
+      sheet.innerHTML = contentHTML;
+    }
+
+    function initializeAfterContentLoad() {
+      // Check if content is loaded by verifying elements exist
+      const elements = sheet.querySelectorAll('h1, h2, li');
+      if (elements.length === 0) {
+        // Content not ready yet, try again
+        setTimeout(initializeAfterContentLoad, 50);
+        return;
+      }
+
+      // Content is ready, proceed with initialization
+      applyInitialSettings();
+      initMemMode();
+      updateAutoPlayButtons();
+      setTimeout(checkToolbarWrap, 100);
+    }
+
+    const DEFAULT_FONT_SIZE = 20;
+
+    const sheet = document.getElementById('sheet');
+    const fontPreset = document.getElementById('fontPreset');
+    const memBtn = document.getElementById('memBtn');
+    const resetMemBtn = document.getElementById('resetMemBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const fontDecBtn = document.getElementById('fontDecBtn');
+    const fontIncBtn = document.getElementById('fontIncBtn');
+    const autoPlayBtn = document.getElementById('autoPlayBtn');
+    const autoPlaySlowBtn = document.getElementById('autoPlaySlowBtn');
+    const autoPlayFastBtn = document.getElementById('autoPlayFastBtn');
+
+    const colBtn = document.getElementById('colBtn');
+
+    const colBtnNarrow = document.getElementById('colBtnNarrow');
+    const fontDecBtnNarrow = document.getElementById('fontDecBtnNarrow');
+    const fontIncBtnNarrow = document.getElementById('fontIncBtnNarrow');
+    const memBtnNarrow = document.getElementById('memBtnNarrow');
+    const autoPlayBtnNarrow = document.getElementById('autoPlayBtnNarrow');
+    const autoPlaySlowBtnNarrow = document.getElementById('autoPlaySlowBtnNarrow');
+    const autoPlayFastBtnNarrow = document.getElementById('autoPlayFastBtnNarrow');
+    const resetMemBtnNarrow = document.getElementById('resetMemBtnNarrow');
+    const copyBtnNarrow = document.getElementById('copyBtnNarrow');
+    const toggleToolbarBtn = document.getElementById('toggleToolbarBtn');
+    const helpBtn = document.getElementById('helpBtn');
+    const helpBtnNarrow = document.getElementById('helpBtnNarrow');
+
+    let allLines = [];
+    let memActive = false;
+    let memIndex = 0;
+    let autoPlayActive = false;
+    let autoPlayTimer = null;
+    let currentColumns = 1;
+    let toolbarVisible = true;
+    let autoPlaySpeed = 120; // BPM (beats per minute)
+
+    function getAutoPlayInterval() {
+      // 每行8拍，所以間隔 = (60000ms / BPM) * 8
+      return (60000 / autoPlaySpeed) * 8;
+    }
+
+    function setColumnCount(count) {
+      currentColumns = count;
+      sheet.style.columnCount = count;
+      sheet.style.columnWidth = 'auto';
+      sheet.style.columnRule = 'none';
+      sheet.setAttribute('data-columns', count);
+
+      const display = sheet.style.display;
+      sheet.style.display = 'none';
+      // eslint-disable-next-line no-unused-expressions
+      sheet.offsetHeight;
+      sheet.style.display = display;      updateColumnButtons();
+    }
+
+    function applyInitialSettings(){
+      sheet.style.fontSize = fontPreset.value + 'px';
+
+      const maxColumns = calculateMaxColumns();
+      setColumnCount(maxColumns);
+    }
+
+    function updateColumnButtons(){
+      colBtn.textContent = `📑 ${currentColumns}欄`;
+      colBtnNarrow.textContent = `📑${currentColumns}`;
+    }
+
+    function updateAutoPlayButtons(){
+      const speedText = `${autoPlaySpeed}♩`;
+      autoPlayBtn.innerHTML = `▶️ 自動播放 ${speedText} (A)`;
+      autoPlayBtnNarrow.innerHTML = `▶️${speedText}`;
+    }
+
+    function changeAutoPlaySpeed(delta) {
+      autoPlaySpeed = Math.max(60, Math.min(200, autoPlaySpeed + delta));
+      updateAutoPlayButtons();
+
+      // If auto play is active, restart with new speed
+      if (autoPlayActive) {
+        clearInterval(autoPlayTimer);
+        autoPlayTimer = setInterval(() => {
+          if (memActive && memIndex < allLines.length) {
+            revealNextLine();
+          } else {
+            autoPlayActive = false;
+            autoPlayBtn.setAttribute('aria-pressed', 'false');
+            autoPlayBtnNarrow.setAttribute('aria-pressed', 'false');
+            if (autoPlayTimer) {
+              clearInterval(autoPlayTimer);
+              autoPlayTimer = null;
+            }
+          }
+        }, getAutoPlayInterval());
+      }
+    }
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let lastTouchEnd = 0;
+
+    sheet.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }
+    }, { passive: true });
+
+    function handleDoubleTap(touchEndTime) {
+      const isDoubleTap = touchEndTime - lastTouchEnd <= 300;
+      lastTouchEnd = touchEndTime;
+      return isDoubleTap;
+    }
+
+    function handleTap(deltaX, deltaY, deltaTime, e) {
+      if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10 && deltaTime < 200) {
+        e.preventDefault();
+        if (!memActive) {
+          toggleMemMode();
+        } else {
+          revealNextLine();
+        }
+        return true;
+      }
+      return false;
+    }
+
+    function handleHorizontalSwipe(deltaX, e) {
+      e.preventDefault();
+      if (deltaX > 0) {
+        toggleColumns();
+      } else {
+        const maxColumns = calculateMaxColumns();
+        const nextColumns = currentColumns <= 1 ? maxColumns : currentColumns - 1;
+        setColumnCount(nextColumns);
+      }
+    }
+
+    function handleVerticalSwipe(deltaY, e) {
+      e.preventDefault();
+      if (deltaY < 0) {
+        changeFont(2);
+      } else {
+        changeFont(-2);
+      }
+    }
+
+    function handleSwipeGestures(deltaX, deltaY, deltaTime, e) {
+      const minSwipeDistance = 50;
+      const maxSwipeTime = 500;
+
+      if (deltaTime >= maxSwipeTime) {
+        return;
+      }
+
+      if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY)) {
+        handleHorizontalSwipe(deltaX, e);
+      }
+      else if (Math.abs(deltaY) > minSwipeDistance && Math.abs(deltaY) > Math.abs(deltaX)) {
+        handleVerticalSwipe(deltaY, e);
+      }
+    }
+
+    sheet.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length !== 1) {
+        return;
+      }
+
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const touchEndTime = Date.now();
+
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      const deltaTime = touchEndTime - touchStartTime;
+
+      if (handleDoubleTap(touchEndTime)) {
+        e.preventDefault();
+        return;
+      }
+
+      if (handleTap(deltaX, deltaY, deltaTime, e)) {
+        return;
+      }
+
+      handleSwipeGestures(deltaX, deltaY, deltaTime, e);
+    }, { passive: false });
+
+    function toggleColumns(){
+      const maxColumns = calculateMaxColumns();
+      const nextColumns = currentColumns >= maxColumns ? 1 : currentColumns + 1;
+      setColumnCount(nextColumns);
+    }
+
+    function toggleToolbar(){
+      const toolbarNarrow = document.querySelector('.toolbar-narrow');
+      const page = document.querySelector('.page');
+
+      if(toolbarVisible){
+        toolbarNarrow.classList.add('minimized');
+        page.classList.add('toolbar-hidden');
+        toggleToolbarBtn.textContent = '▼';
+        toolbarVisible = false;
+      } else {
+        toolbarNarrow.classList.remove('minimized');
+        page.classList.remove('toolbar-hidden');
+        toggleToolbarBtn.textContent = '⚙️';
+        toolbarVisible = true;
+      }
+    }
+
+    function calculateMaxColumns(){
+      const viewportWidth = window.innerWidth - 80;
+      const fontSize = parseInt(window.getComputedStyle(sheet).fontSize) || DEFAULT_FONT_SIZE;
+
+      const testDiv = document.createElement('div');
+      testDiv.style.cssText = `
+        position: absolute;
+        top: -9999px;
+        font-family: ${window.getComputedStyle(sheet).fontFamily};
+        font-size: ${fontSize}px;
+        line-height: 1.45;
+        white-space: nowrap;
+        visibility: hidden;
+      `;
+      document.body.appendChild(testDiv);
+
+      let maxLineWidth = 0;
+      const lines = sheet.querySelectorAll('h1, h2, li');
+      lines.forEach(line => {
+        testDiv.textContent = line.textContent;
+        maxLineWidth = Math.max(maxLineWidth, testDiv.offsetWidth);
+      });
+
+      document.body.removeChild(testDiv);
+
+      const minColumnWidth = maxLineWidth + 40;
+      const maxPossibleColumns = Math.floor(viewportWidth / minColumnWidth);
+      return Math.max(1, Math.min(maxPossibleColumns, 6));
+    }
+
+    function responsiveColumnAdjust(){
+      const maxColumns = calculateMaxColumns();
+      setColumnCount(maxColumns);
+    }
+
+    function checkToolbarWrap(){
+      if (window.innerWidth <= 768) {
+        return;
+      }
+
+      const toolbar = document.querySelector('.toolbar');
+      const toolbarNarrow = document.querySelector('.toolbar-narrow');
+
+      toolbar.style.display = 'flex';
+      toolbarNarrow.style.display = 'none';
+
+      setTimeout(() => {
+        const buttons = toolbar.querySelectorAll('button, label');
+        if (buttons.length < 2) return;
+
+        const firstButton = buttons[0];
+        const lastButton = buttons[buttons.length - 1];
+
+        const firstRect = firstButton.getBoundingClientRect();
+        const lastRect = lastButton.getBoundingClientRect();
+
+        const isWrapped = Math.abs(firstRect.top - lastRect.top) > 10;
+
+        if (isWrapped) {
+          toolbar.style.display = 'none';
+          toolbarNarrow.style.display = 'flex';
+        }
+      }, 10);
+    }
+
+    colBtn.addEventListener('click', toggleColumns);
+    colBtnNarrow.addEventListener('click', toggleColumns);
+
+    fontPreset.addEventListener('input', ()=>{
+      const minFont = parseInt(fontPreset.min) || 6;
+      const maxFont = parseInt(fontPreset.max) || 128;
+      const fontSize = Math.max(minFont, Math.min(maxFont, parseInt(fontPreset.value) || DEFAULT_FONT_SIZE));
+      fontPreset.value = fontSize;
+      sheet.style.fontSize = fontSize + 'px';
+      responsiveColumnAdjust();
+      setTimeout(checkToolbarWrap, 100);
+    });
+
+    function changeFont(delta){
+      const cur = parseInt(window.getComputedStyle(sheet).fontSize) || DEFAULT_FONT_SIZE;
+      const minFont = parseInt(fontPreset.min) || 6;
+      const maxFont = parseInt(fontPreset.max) || 128;
+      const next = Math.max(minFont, Math.min(maxFont, cur + delta));
+      sheet.style.fontSize = next + 'px';
+      document.getElementById('fontPreset').value = next;
+      responsiveColumnAdjust();
+      setTimeout(checkToolbarWrap, 100);
+    }
+
+    function setColumns(n){
+      const maxColumns = calculateMaxColumns();
+      const num = Math.min(maxColumns, Math.max(1, Number(n)));
+      setColumnCount(num);
+    }
+
+    function initMemMode(){
+      const listItems = sheet.querySelectorAll('li');
+      const h2Items = sheet.querySelectorAll('h2');
+
+      // Make li elements clickable without checkboxes
+      listItems.forEach((li, index) => {
+        li.style.cursor = 'pointer';
+        li.style.userSelect = 'none';
+        li.dataset.index = index;
+        li.addEventListener('click', handleLiClick);
+      });
+
+      // Make h2 elements clickable for group control
+      h2Items.forEach((h2, index) => {
+        h2.style.cursor = 'pointer';
+        h2.style.userSelect = 'none';
+        h2.dataset.h2Index = index;
+        h2.addEventListener('click', handleH2Click);
+      });
+
+      allLines = Array.from(sheet.querySelectorAll('li'));
+      memActive = false;
+      memIndex = 0;
+      allLines.forEach(el => el.classList.remove('hidden-line', 'memorized'));
+      memBtn.setAttribute('aria-pressed','false');
+    }
+
+    function handleLiClick(event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const li = event.currentTarget;
+
+      // Toggle memorized state
+      if (li.classList.contains('memorized')) {
+        li.classList.remove('memorized');
+      } else {
+        li.classList.add('memorized');
+      }
+
+      // Clear completed state when manually changing memory state
+      li.classList.remove('completed-last');
+
+      // Update memory mode display if active
+      if (memActive) {
+        updateMemoryDisplay();
+      }
+    }
+
+    function handleH2Click(event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const h2 = event.currentTarget;
+
+      // Find all li elements that belong to this h2 section
+      let currentElement = h2.nextElementSibling;
+      const sectionLiElements = [];
+
+      while (currentElement && currentElement.tagName !== 'H2') {
+        if (currentElement.tagName === 'OL' || currentElement.tagName === 'UL') {
+          // If it's a list, get all li elements inside it
+          const lis = currentElement.querySelectorAll('li');
+          sectionLiElements.push(...lis);
+        } else if (currentElement.tagName === 'LI') {
+          sectionLiElements.push(currentElement);
+        }
+        currentElement = currentElement.nextElementSibling;
+      }
+
+      // Check current state of all li elements in this section
+      const memorizedCount = sectionLiElements.filter(li => li.classList.contains('memorized')).length;
+      const totalCount = sectionLiElements.length;
+
+      let shouldMemorize;
+      if (memorizedCount === 0) {
+        // All unmemorized -> memorize all
+        shouldMemorize = true;
+      } else if (memorizedCount === totalCount) {
+        // All memorized -> unmemorize all
+        shouldMemorize = false;
+      } else {
+        // Partially memorized -> unmemorize all
+        shouldMemorize = false;
+      }
+
+      // Apply the new state to all li elements in this section
+      sectionLiElements.forEach(li => {
+        if (shouldMemorize) {
+          li.classList.add('memorized');
+        } else {
+          li.classList.remove('memorized');
+        }
+        // Clear completed state when manually changing memory state
+        li.classList.remove('completed-last');
+      });
+
+      // Update memory mode display if active
+      if (memActive) {
+        updateMemoryDisplay();
+      }
+    }
+
+    function updateMemoryDisplay() {
+      allLines.forEach(li => {
+        if (li.classList.contains('memorized')) {
+          // Keep memorized items visible
+          li.classList.remove('hidden-line');
+        } else if (memActive) {
+          // Hide unmemorized items in memory mode
+          li.classList.add('hidden-line');
+        }
+      });
+    }
+
+    function hideUnmemorizedLines(){
+      allLines.forEach(li => {
+        if (!li.classList.contains('memorized')) {
+          li.classList.add('hidden-line');
+        }
+      });
+    }
+
+    function revealNextLine(){
+      // Find next unmemorized line
+      while(memIndex < allLines.length) {
+        const li = allLines[memIndex];
+
+        if (!li.classList.contains('memorized')) {
+          // This is an unmemorized line, reveal it
+          li.classList.remove('hidden-line');
+
+          // 自動滾動到最後顯示的行
+          li.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end'
+          });
+
+          memIndex++;
+          return;
+        }
+
+        // Skip memorized lines
+        memIndex++;
+      }
+
+      // No more unmemorized lines - mark the end marker as completed
+      const endMarker = document.getElementById('endMarker');
+      if (endMarker) {
+        endMarker.classList.add('completed-last');
+      }
+
+      memActive = false;
+      memBtn.setAttribute('aria-pressed','false');
+      memBtnNarrow.setAttribute('aria-pressed','false');
+      memIndex = 0;
+    }
+
+    function toggleMemMode(){
+      if(!memActive){
+        hideUnmemorizedLines();
+        memActive = true;
+        memIndex = 0;
+        memBtn.setAttribute('aria-pressed','true');
+        memBtnNarrow.setAttribute('aria-pressed','true');
+      } else {
+        revealNextLine();
+      }
+    }
+
+    function resetMem(){
+      allLines.forEach(el => {
+        el.classList.remove('hidden-line', 'memorized', 'completed-last');
+      });
+
+      // Also clear the end marker
+      const endMarker = document.getElementById('endMarker');
+      if (endMarker) {
+        endMarker.classList.remove('completed-last');
+      }
+
+      memActive = false;
+      memIndex = 0;
+      autoPlayActive = false;
+      if(autoPlayTimer) {
+        clearInterval(autoPlayTimer);
+        autoPlayTimer = null;
+      }
+      memBtn.setAttribute('aria-pressed','false');
+      autoPlayBtn.setAttribute('aria-pressed','false');
+      memBtnNarrow.setAttribute('aria-pressed','false');
+      autoPlayBtnNarrow.setAttribute('aria-pressed','false');
+
+      resetFontSize();
+    }
+
+    function resetFontSize() {
+      fontPreset.value = DEFAULT_FONT_SIZE;
+      sheet.style.fontSize = DEFAULT_FONT_SIZE + 'px';
+
+      const maxColumns = calculateMaxColumns();
+      setColumnCount(maxColumns);
+    }
+
+    function showHelp() {
+      const helpContent = `
+📖 瑜伽練習頁面使用說明
+
+⚡ 快速操作
+💻 電腦：Space鍵=記憶模式 | R鍵=重置 | M鍵=記憶切換
+📱 觸控：單擊=記憶模式 | 左右滑=調欄數 | 上下滑=調字型
+
+ Memory模式顯示邏輯
+• 順序顯示：多欄模式下先顯示完第一欄，再顯示第二欄
+• 行級控制：每次按空白鍵或M鍵顯示下一行內容
+• 自動播放：可設定每4秒自動顯示下一行
+
+📱 觸控手勢操作
+👆 單擊：等同空白鍵，進入記憶模式或顯示下一行
+👈👉 左右滑動：調整欄數 (→右滑增加，←左滑減少)
+👆👇 上下滑動：調整字型 (↑上滑放大，↓下滑縮小)
+
+⌨️ 鍵盤快捷鍵
+Space：記憶模式切換/顯示下一行
+R：重置 | M：記憶模式切換 | A：自動播放切換
+C：複製全部內容 | +/-：放大/縮小字型 | 1-6：直接設定欄數
+      `;
+
+      alert(helpContent);
+    }
+
+    function toggleAutoPlay(){
+      if(!autoPlayActive){
+        if(!memActive){
+          toggleMemMode();
+        }
+        autoPlayActive = true;
+        autoPlayBtn.setAttribute('aria-pressed','true');
+        autoPlayBtnNarrow.setAttribute('aria-pressed','true');
+
+        // Immediately reveal the next line without delay
+        if(memActive && memIndex < allLines.length){
+          revealNextLine();
+        }
+
+        autoPlayTimer = setInterval(()=>{
+          if(memActive && memIndex < allLines.length){
+            revealNextLine();
+          } else {
+            autoPlayActive = false;
+            autoPlayBtn.setAttribute('aria-pressed','false');
+            autoPlayBtnNarrow.setAttribute('aria-pressed','false');
+            if(autoPlayTimer) {
+              clearInterval(autoPlayTimer);
+              autoPlayTimer = null;
+            }
+          }
+        }, getAutoPlayInterval());
+      } else {
+        autoPlayActive = false;
+        autoPlayBtn.setAttribute('aria-pressed','false');
+        autoPlayBtnNarrow.setAttribute('aria-pressed','false');
+        if(autoPlayTimer) {
+          clearInterval(autoPlayTimer);
+          autoPlayTimer = null;
+        }
+      }
+    }
+
+    function copyAll(){
+      const visibleElements = Array.from(sheet.querySelectorAll('h1, h2, ol')).filter(el =>
+        !el.classList.contains('hidden-line')
+      );
+
+      const text = visibleElements.map(node => {
+        if (node.tagName === 'OL') {
+          const visibleItems = Array.from(node.querySelectorAll('li')).filter(li =>
+            !li.classList.contains('hidden-line')
+          ).map((li, index) => {
+            return `${index + 1}. ${li.textContent}`;
+          }).join('\n');
+          return visibleItems;
+        } else {
+          return node.innerText;
+        }
+      }).join('\n\n');
+
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(()=>{
+          const prev = copyBtn.innerText;
+          copyBtn.innerText = '已複製';
+          setTimeout(()=>copyBtn.innerText = prev,900);
+        }).catch(()=>{
+          alert('複製失敗，請手動選取後複製');
+        });
+      } else {
+        alert('此瀏覽器不支援剪貼簿 API，請手動複製');
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const activeTag = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT' || document.activeElement.isContentEditable);
+      if(activeTag) return;
+
+      if(e.code === 'Space'){
+        e.preventDefault();
+        if(!memActive){ toggleMemMode(); } else { revealNextLine(); }
+        return;
+      }
+
+      switch(e.key){
+        case 'm': case 'M': e.preventDefault(); toggleMemMode(); break;
+        case 'a': case 'A': e.preventDefault(); toggleAutoPlay(); break;
+        case 'r': case 'R': e.preventDefault(); resetMem(); break;
+        case 'c': case 'C': e.preventDefault(); copyAll(); break;
+        case '+': case '=': e.preventDefault(); changeFont(1); break;
+        case '-': e.preventDefault(); changeFont(-1); break;
+        case '1': case '2': case '3': case '4': case '5': case '6': e.preventDefault(); setColumns(Number(e.key)); break;
+      }
+    });
+
+    memBtn.addEventListener('click', (e)=>{ toggleMemMode(); });
+    autoPlayBtn.addEventListener('click', (e)=>{ toggleAutoPlay(); });
+    resetMemBtn.addEventListener('click', resetMem);
+    copyBtn.addEventListener('click', copyAll);
+    fontDecBtn.addEventListener('click', ()=>{ changeFont(-1); });
+    fontIncBtn.addEventListener('click', ()=>{ changeFont(1); });
+    toggleToolbarBtn.addEventListener('click', toggleToolbar);
+    helpBtn.addEventListener('click', showHelp);
+
+    autoPlaySlowBtn.addEventListener('click', () => changeAutoPlaySpeed(-10));
+    autoPlayFastBtn.addEventListener('click', () => changeAutoPlaySpeed(10));
+    autoPlaySlowBtnNarrow.addEventListener('click', () => changeAutoPlaySpeed(-10));
+    autoPlayFastBtnNarrow.addEventListener('click', () => changeAutoPlaySpeed(10));
+
+    memBtnNarrow.addEventListener('click', ()=>{
+      toggleMemMode();
+      memBtnNarrow.setAttribute('aria-pressed', memBtn.getAttribute('aria-pressed'));
+    });
+    autoPlayBtnNarrow.addEventListener('click', ()=>{
+      toggleAutoPlay();
+      autoPlayBtnNarrow.setAttribute('aria-pressed', autoPlayBtn.getAttribute('aria-pressed'));
+    });
+    resetMemBtnNarrow.addEventListener('click', resetMem);
+    copyBtnNarrow.addEventListener('click', copyAll);
+    fontDecBtnNarrow.addEventListener('click', ()=>{ changeFont(-1); });
+    fontIncBtnNarrow.addEventListener('click', ()=>{ changeFont(1); });
+    helpBtnNarrow.addEventListener('click', showHelp);
+
+    window.addEventListener('load', ()=>{
+      fontPreset.value = DEFAULT_FONT_SIZE;
+      sheet.style.fontSize = DEFAULT_FONT_SIZE + 'px';
+
+      loadContentFromMarkdown();
+
+      // Initialize after content is fully loaded
+      initializeAfterContentLoad();
+    });
+
+    window.addEventListener('resize', ()=>{
+      responsiveColumnAdjust();
+      setTimeout(checkToolbarWrap, 100);
+    });
+  </script>
+</body>
+</html>
