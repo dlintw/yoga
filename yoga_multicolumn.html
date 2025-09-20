@@ -7,8 +7,8 @@
   <style>
     :root{--columns:1;--base-font:20px;--min-font:6px}
     html,body{height:100%;margin:0;background:#f7f7f8;font-family:-apple-system,BlinkMacSystemFont,'Noto Sans TC','Microsoft JhengHei',Roboto,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-    .page{box-sizing:border-box;width:100vw;height:100vh;padding:68px 40px 28px 40px;display:block;overflow:hidden}
-    .sheet{height:100%;column-count:var(--columns);column-width:auto;column-gap:20px;column-fill:auto;background:linear-gradient(180deg,rgba(255,255,255,0.95),rgba(250,250,252,0.95));padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.06);border-radius:10px;overflow:auto;font-size:var(--base-font);line-height:1.45;column-rule:none}
+    .page{box-sizing:border-box;width:100vw;height:100vh;padding:68px 40px 28px 40px;display:block;overflow:auto}
+    .sheet{min-height:100%;column-count:var(--columns);column-width:auto;column-gap:20px;column-fill:balance;background:linear-gradient(180deg,rgba(255,255,255,0.95),rgba(250,250,252,0.95));padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.06);border-radius:10px;overflow:visible;font-size:var(--base-font);line-height:1.45;column-rule:1px solid #e0e0e0}
 
     .sheet * {
       box-sizing: border-box;
@@ -41,11 +41,13 @@
         position: relative;
       }
 
+      /* 移除自動編號，改用手動控制
       ol li::before {
         content: counter(list-counter) ". ";
         font-weight: normal;
         margin-right: 0.5em;
       }
+      */
     }
 
     @page{size:landscape}
@@ -118,6 +120,45 @@
       color: red !important;
       font-weight: bold !important;
     }
+
+    /* Help Modal */
+    .help-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+
+    .help-modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 20px;
+      border: none;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .help-close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .help-close:hover,
+    .help-close:focus {
+      color: black;
+    }
   </style>
 </head>
 <body>
@@ -125,17 +166,17 @@
     <nav class="toolbar" aria-label="文件控制">
       <button id="colBtn" title="切換欄數 (快捷鍵 1-6)">📑 1欄</button>
 
-      <label>🔤
-        <input type="number" id="fontPreset" title="字型大小 (快捷鍵 +/-)" value="20" min="6" max="128" step="1" style="width: 60px;">
+      <label>A
+        <input type="number" id="fontPreset" title="字型大小 (快捷鍵 +/-)" value="20" min="6" max="128" step="1" style="width: 40px;">
       </label>
 
-      <button id="fontDecBtn" title="縮小字型 (快捷鍵 -)">-</button>
-      <button id="fontIncBtn" title="放大字型 (快捷鍵 +)">+</button>
+      <!-- <button id="fontDecBtn" title="縮小字型 (快捷鍵 -)">-</button>
+      <button id="fontIncBtn" title="放大字型 (快捷鍵 +)">+</button> -->
 
-      <button id="memBtn" aria-pressed="false" title="切換默背模式：按一次隱藏全部，再按空白或 M 顯示下一行">📖 默背模式 (M / Space)</button>
-      <button id="autoPlaySlowBtn" title="自動播放減速">🐌</button>
+      <button id="memBtn" aria-pressed="false" title="切換默背模式：按一次隱藏全部，再按空白或 M 顯示下一行">默背模式 (M / Space)</button>
+      <button id="autoPlaySlowBtn" title="自動播放減速">-</button>
       <button id="autoPlayBtn" aria-pressed="false" title="自動播放默背模式 — 快捷鍵 A">▶️ 自動播放 120♩ (A)</button>
-      <button id="autoPlayFastBtn" title="自動播放加速">🐰</button>
+      <button id="autoPlayFastBtn" title="自動播放加速">+</button>
       <button id="resetMemBtn" title="重置默背並顯示全部 — 快捷鍵 R">🔄 重置 (R)</button>
       <button id="copyBtn" title="複製全部內容到剪貼簿 — 快捷鍵 C">📋 複製全部 (C)</button>
       <button id="helpBtn" title="顯示使用說明">❓ 說明</button>
@@ -143,20 +184,32 @@
 
     <!-- 窄螢幕專用工具列 -->
     <nav class="toolbar-narrow" aria-label="文件控制">
+      <button id="memBtnNarrow" aria-pressed="false" title="默背模式">M</button>
+      <button id="autoPlaySlowBtnNarrow" title="減速">-</button>
+      <button id="autoPlayBtnNarrow" aria-pressed="false" title="自動播放">▶️120♩</button>      
+      <button id="autoPlayFastBtnNarrow" title="加速">+</button>
       <button id="toggleToolbarBtn" title="切換工具列顯示" style="position: absolute; right: 8px; top: 4px; padding: 4px 8px; font-size: 12px;">⚙️</button>
-      <button id="colBtnNarrow" title="切換欄數">📑</button>
-      <button id="fontDecBtnNarrow" title="縮小字型">🔤-</button>
-      <button id="fontIncBtnNarrow" title="放大字型">🔤+</button>
-      <button id="memBtnNarrow" aria-pressed="false" title="默背模式">📖</button>
-      <button id="autoPlaySlowBtnNarrow" title="減速">🐌</button>
-      <button id="autoPlayBtnNarrow" aria-pressed="false" title="自動播放">▶️120♩</button>
-      <button id="autoPlayFastBtnNarrow" title="加速">🐰</button>
-      <button id="resetMemBtnNarrow" title="重置">🔄</button>
-      <button id="copyBtnNarrow" title="複製">📋</button>
-      <button id="helpBtnNarrow" title="說明">❓</button>
+      <div id="toolbarNarrowExtra" style="display:none;">
+        <button id="colBtnNarrow" title="切換欄數">📑</button>
+        <!-- <button id="fontDecBtnNarrow" title="縮小字型">-</button> -->
+        <input type="number" id="fontPreset" title="字型大小 (快捷鍵 +/-)" value="20" min="6" max="128" step="1" style="width: 40px;">
+        <!-- <button id="fontIncBtnNarrow" title="放大字型">+</button> -->
+
+        <button id="resetMemBtnNarrow" title="重置">🔄</button>
+        <button id="copyBtnNarrow" title="複製">📋</button>
+        <button id="helpBtnNarrow" title="說明">❓</button>
+      </div>
     </nav>
 
     <div id="sheet" class="sheet">
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="help-modal">
+      <div class="help-modal-content">
+        <span class="help-close">&times;</span>
+        <div id="helpContent"></div>
+      </div>
     </div>
   </div>
 
@@ -179,12 +232,12 @@
 2. 站姿前彎5678
 3. 吸氣頭抬吐氣前彎
 4. 後跳下犬5678
-5. 平板34趴下78
+5. 平板34鱷魚78
 6. 蛇式34下犬78
 7. 右腳後抬前跨78
 8. 上英雄一5678
 9. 手下34下犬78
-10. 平板34趴下78
+10. 平板34鱷魚78
 11. 蛇式34下犬78
 12. 左腳後抬前跨78
 13. 上英雄一5678
@@ -211,12 +264,12 @@
 2. 站姿前彎5678
 3. 吸氣頭抬吐氣前彎
 4. 後跳下犬5678
-5. 平板34趴下78
+5. 平板34鱷魚78
 6. 蛇式34下犬78
 7. 右腳後抬前跨78
 8. 上英雄一5678
 9. 手下34下犬78
-10. 平板34趴下78
+10. 平板34鱷魚78
 11. 蛇式34下犬78
 12. 左腳後抬前跨78
 13. 上英雄一5678
@@ -243,7 +296,7 @@
 6. 下犬1次5678      / 中間嬰兒5678
 7. 下犬2次5678      / 中間嬰兒5678
 8. 下犬34平板78
-9. 趴下345678
+9. 鱷魚345678
 10. 蛇式345678
 
 ## H 04:11 10個8拍(微震撼無人聲)
@@ -251,9 +304,9 @@
 2. 內跨34轉外78     # 內跨指近中間
 3. 吸氣頭抬吐氣前彎
 4. 前手插腰前手展開
-5. 手下345678
+5. 手下樹式5678
 6. 後手插腰後手展開
-7. 手下345678
+7. 手下樹式5678
 8. 後轉34收腳78
 9. 蹲234抱躺78
 10. 預備輪式5678
@@ -262,7 +315,7 @@
 1. 上2345678  # 135排橋式, 24排輪式
 2. 撐住34下678
 3. 抱腳345678
-4. 前滾站起5678
+4. 前滾34站起78
 5. 走位345678
 6. 雙人下犬5678
 7. 倒立準備5678
@@ -283,13 +336,17 @@
         if (line.startsWith('# ')) {
           html += `<h1>${line.substring(2)}</h1>\n`;
         } else if (line.startsWith('## ')) {
-          html += `<h2>${line.substring(3)}</h2>\n`;
+          // h2 加小按鈕
+          const h2Text = line.substring(3);
+          html += `<h2 style='display:flex;align-items:center;gap:6px;'><button class='h2-btn' style='padding:2px 6px;font-size:12px;border:1px solid #ccc;background:#f9f9f9;border-radius:3px;cursor:pointer;'>☐</button> <span>${h2Text}</span></h2>\n`;
         } else if (/^\d+\./.test(line)) {
           // Start or continue ordered list
           if (i === 0 || !(/^\d+\./.test(lines[i-1].trim()))) {
             html += '<ol>\n';
           }
-          html += `<li>${line.replace(/^\d+\.\s*/, '')}</li>\n`;
+          // li 加 checkbox，移除編號衝突
+          const liText = line.replace(/^\d+\.\s*/, '');
+          html += `<li style='list-style:none;position:relative;'><input type='checkbox' class='mem-checkbox' style='position:absolute;left:-20px;top:2px;'><span class='li-number' style='display:inline-block;width:20px;margin-right:4px;'></span>${liText}</li>\n`;
           // Check if next line is not a list item
           if (i === lines.length - 1 || !(/^\d+\./.test(lines[i+1].trim()))) {
             html += '</ol>\n';
@@ -309,6 +366,18 @@
     function loadContentFromMarkdown() {
       const contentHTML = parseMarkdownToHTML(yogaContent);
       sheet.innerHTML = contentHTML;
+      
+      // 添加編號到 li 元素
+      const ols = sheet.querySelectorAll('ol');
+      ols.forEach(ol => {
+        const lis = ol.querySelectorAll('li');
+        lis.forEach((li, index) => {
+          const numberSpan = li.querySelector('.li-number');
+          if (numberSpan) {
+            numberSpan.textContent = (index + 1) + '.';
+          }
+        });
+      });
     }
 
     function initializeAfterContentLoad() {
@@ -373,7 +442,7 @@
       currentColumns = count;
       sheet.style.columnCount = count;
       sheet.style.columnWidth = 'auto';
-      sheet.style.columnRule = 'none';
+      sheet.style.columnRule = '1px solid #e0e0e0';
       sheet.setAttribute('data-columns', count);
 
       const display = sheet.style.display;
@@ -386,6 +455,7 @@
     function applyInitialSettings(){
       sheet.style.fontSize = fontPreset.value + 'px';
 
+      // 初始時根據螢幕寬度自動設定最適合的欄數
       const maxColumns = calculateMaxColumns();
       setColumnCount(maxColumns);
     }
@@ -443,55 +513,6 @@
       return isDoubleTap;
     }
 
-    function handleTap(deltaX, deltaY, deltaTime, e) {
-      if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10 && deltaTime < 200) {
-        e.preventDefault();
-        if (!memActive) {
-          toggleMemMode();
-        } else {
-          revealNextLine();
-        }
-        return true;
-      }
-      return false;
-    }
-
-    function handleHorizontalSwipe(deltaX, e) {
-      e.preventDefault();
-      if (deltaX > 0) {
-        toggleColumns();
-      } else {
-        const maxColumns = calculateMaxColumns();
-        const nextColumns = currentColumns <= 1 ? maxColumns : currentColumns - 1;
-        setColumnCount(nextColumns);
-      }
-    }
-
-    function handleVerticalSwipe(deltaY, e) {
-      e.preventDefault();
-      if (deltaY < 0) {
-        changeFont(2);
-      } else {
-        changeFont(-2);
-      }
-    }
-
-    function handleSwipeGestures(deltaX, deltaY, deltaTime, e) {
-      const minSwipeDistance = 50;
-      const maxSwipeTime = 500;
-
-      if (deltaTime >= maxSwipeTime) {
-        return;
-      }
-
-      if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY)) {
-        handleHorizontalSwipe(deltaX, e);
-      }
-      else if (Math.abs(deltaY) > minSwipeDistance && Math.abs(deltaY) > Math.abs(deltaX)) {
-        handleVerticalSwipe(deltaY, e);
-      }
-    }
-
     sheet.addEventListener('touchend', (e) => {
       if (e.changedTouches.length !== 1) {
         return;
@@ -507,36 +528,35 @@
 
       if (handleDoubleTap(touchEndTime)) {
         e.preventDefault();
+        // 雙擊等同空白鍵
+        if (!memActive) {
+          toggleMemMode();
+        } else {
+          revealNextLine();
+        }
         return;
       }
 
-      if (handleTap(deltaX, deltaY, deltaTime, e)) {
-        return;
-      }
-
-      handleSwipeGestures(deltaX, deltaY, deltaTime, e);
+      // 其他觸控操作使用系統預設
     }, { passive: false });
 
     function toggleColumns(){
-      const maxColumns = calculateMaxColumns();
-      const nextColumns = currentColumns >= maxColumns ? 1 : currentColumns + 1;
+      // 讓使用者可以在 1-6 欄之間循環切換，不受螢幕寬度限制
+      const nextColumns = currentColumns >= 6 ? 1 : currentColumns + 1;
       setColumnCount(nextColumns);
     }
 
     function toggleToolbar(){
       const toolbarNarrow = document.querySelector('.toolbar-narrow');
       const page = document.querySelector('.page');
+      const extra = document.getElementById('toolbarNarrowExtra');
 
-      if(toolbarVisible){
-        toolbarNarrow.classList.add('minimized');
-        page.classList.add('toolbar-hidden');
+      if (extra.style.display === 'none') {
+        extra.style.display = 'flex';
         toggleToolbarBtn.textContent = '▼';
-        toolbarVisible = false;
       } else {
-        toolbarNarrow.classList.remove('minimized');
-        page.classList.remove('toolbar-hidden');
+        extra.style.display = 'none';
         toggleToolbarBtn.textContent = '⚙️';
-        toolbarVisible = true;
       }
     }
 
@@ -553,19 +573,36 @@
         line-height: 1.45;
         white-space: nowrap;
         visibility: hidden;
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
       `;
       document.body.appendChild(testDiv);
 
       let maxLineWidth = 0;
       const lines = sheet.querySelectorAll('h1, h2, li');
       lines.forEach(line => {
-        testDiv.textContent = line.textContent;
-        maxLineWidth = Math.max(maxLineWidth, testDiv.offsetWidth);
+        if (line.tagName === 'LI') {
+          // 為 li 創建包含 checkbox 和編號的測試元素
+          testDiv.innerHTML = `<div style='position:relative;list-style:none;'><input type='checkbox' style='position:absolute;left:-20px;top:2px;width:16px;height:16px;'><span style='display:inline-block;width:20px;margin-right:4px;'>1.</span>${line.textContent}</div>`;
+          const divWidth = testDiv.offsetWidth;
+          maxLineWidth = Math.max(maxLineWidth, divWidth + 25); // 減少到25px
+        } else if (line.tagName === 'H2' && line.querySelector('.h2-btn')) {
+          // 為 h2 創建包含按鈕的測試元素
+          testDiv.innerHTML = `<div style='display:flex;align-items:center;gap:6px;box-sizing:border-box;'><button class='h2-btn' style='padding:2px 6px;font-size:12px;border:1px solid #ccc;background:#f9f9f9;border-radius:3px;margin:0;'>☐</button> <span style='white-space:nowrap;'>${line.textContent}</span></div>`;
+          const divWidth = testDiv.offsetWidth;
+          maxLineWidth = Math.max(maxLineWidth, divWidth + 15); // 減少到15px
+        } else {
+          // h1 或其他元素
+          testDiv.innerHTML = `<span style='white-space:nowrap;'>${line.textContent}</span>`;
+          maxLineWidth = Math.max(maxLineWidth, testDiv.offsetWidth);
+        }
       });
 
       document.body.removeChild(testDiv);
 
-      const minColumnWidth = maxLineWidth + 40;
+      // 減少安全餘量，但考慮欄間分隔線
+      const minColumnWidth = maxLineWidth + 30; // 從60減少到30
       const maxPossibleColumns = Math.floor(viewportWidth / minColumnWidth);
       return Math.max(1, Math.min(maxPossibleColumns, 6));
     }
@@ -630,8 +667,8 @@
     }
 
     function setColumns(n){
-      const maxColumns = calculateMaxColumns();
-      const num = Math.min(maxColumns, Math.max(1, Number(n)));
+      // 允許使用者設定 1-6 欄，不受螢幕寬度限制
+      const num = Math.min(6, Math.max(1, Number(n)));
       setColumnCount(num);
     }
 
@@ -639,20 +676,72 @@
       const listItems = sheet.querySelectorAll('li');
       const h2Items = sheet.querySelectorAll('h2');
 
-      // Make li elements clickable without checkboxes
+      // li 加 checkbox控制
       listItems.forEach((li, index) => {
-        li.style.cursor = 'pointer';
+        li.style.cursor = '';
         li.style.userSelect = 'none';
         li.dataset.index = index;
-        li.addEventListener('click', handleLiClick);
+        // 移除原本點整個 li 的事件
+        li.removeEventListener('click', handleLiClick);
+        // 綁定 checkbox
+        const checkbox = li.querySelector('.mem-checkbox');
+        if (checkbox) {
+          checkbox.checked = li.classList.contains('memorized');
+          checkbox.addEventListener('change', (e) => {
+            if (checkbox.checked) {
+              li.classList.add('memorized');
+            } else {
+              li.classList.remove('memorized');
+            }
+            li.classList.remove('completed-last');
+            if (memActive) updateMemoryDisplay();
+          });
+        }
       });
 
-      // Make h2 elements clickable for group control
+      // h2 加小按鈕控制
       h2Items.forEach((h2, index) => {
-        h2.style.cursor = 'pointer';
+        h2.style.cursor = '';
         h2.style.userSelect = 'none';
         h2.dataset.h2Index = index;
-        h2.addEventListener('click', handleH2Click);
+        // 移除原本點整個 h2 的事件
+        h2.removeEventListener('click', handleH2Click);
+        // 綁定小按鈕
+        const button = h2.querySelector('.h2-btn');
+        if (button) {
+          // 判斷本節所有 li 是否都 memorized
+          let currentElement = h2.nextElementSibling;
+          const sectionLiElements = [];
+          while (currentElement && currentElement.tagName !== 'H2') {
+            if (currentElement.tagName === 'OL' || currentElement.tagName === 'UL') {
+              const lis = currentElement.querySelectorAll('li');
+              sectionLiElements.push(...lis);
+            } else if (currentElement.tagName === 'LI') {
+              sectionLiElements.push(currentElement);
+            }
+            currentElement = currentElement.nextElementSibling;
+          }
+          const memorizedCount = sectionLiElements.filter(li => li.classList.contains('memorized')).length;
+          const totalCount = sectionLiElements.length;
+          button.textContent = memorizedCount === totalCount && totalCount > 0 ? '☑' : '☐';
+          button.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isChecked = button.textContent === '☑';
+            button.textContent = isChecked ? '☐' : '☑';
+            sectionLiElements.forEach(li => {
+              if (!isChecked) {
+                li.classList.add('memorized');
+                li.querySelector('.mem-checkbox').checked = true;
+              } else {
+                li.classList.remove('memorized');
+                li.querySelector('.mem-checkbox').checked = false;
+              }
+              li.classList.remove('completed-last');
+            });
+            if (memActive) updateMemoryDisplay();
+          });
+        }
       });
 
       allLines = Array.from(sheet.querySelectorAll('li'));
@@ -739,6 +828,16 @@
     }
 
     function updateMemoryDisplay() {
+      // 記憶/播放模式時 sheet 改單欄並可捲動
+      if (memActive || autoPlayActive) {
+        sheet.style.columnCount = 1;
+        sheet.style.overflowY = 'auto';
+        sheet.style.maxHeight = 'calc(100vh - 100px)';
+      } else {
+        sheet.style.columnCount = currentColumns;
+        sheet.style.overflowY = '';
+        sheet.style.maxHeight = '';
+      }
       allLines.forEach(li => {
         if (li.classList.contains('memorized')) {
           // Keep memorized items visible
@@ -751,6 +850,10 @@
     }
 
     function hideUnmemorizedLines(){
+      // 記憶/播放模式時 sheet 改單欄並可捲動
+      sheet.style.columnCount = 1;
+      sheet.style.overflowY = 'auto';
+      sheet.style.maxHeight = 'calc(100vh - 100px)';
       allLines.forEach(li => {
         if (!li.classList.contains('memorized')) {
           li.classList.add('hidden-line');
@@ -807,7 +910,7 @@
 
     function resetMem(){
       allLines.forEach(el => {
-        el.classList.remove('hidden-line', 'memorized', 'completed-last');
+        el.classList.remove('hidden-line', 'completed-last');
       });
 
       // Also clear the end marker
@@ -828,7 +931,10 @@
       memBtnNarrow.setAttribute('aria-pressed','false');
       autoPlayBtnNarrow.setAttribute('aria-pressed','false');
 
-      resetFontSize();
+      // 恢復多欄設計
+      sheet.style.columnCount = currentColumns;
+      sheet.style.overflowY = '';
+      sheet.style.maxHeight = '';
     }
 
     function resetFontSize() {
@@ -841,29 +947,58 @@
 
     function showHelp() {
       const helpContent = `
-📖 瑜伽練習頁面使用說明
-
-⚡ 快速操作
-💻 電腦：Space鍵=記憶模式 | R鍵=重置 | M鍵=記憶切換
-📱 觸控：單擊=記憶模式 | 左右滑=調欄數 | 上下滑=調字型
-
- Memory模式顯示邏輯
-• 順序顯示：多欄模式下先顯示完第一欄，再顯示第二欄
-• 行級控制：每次按空白鍵或M鍵顯示下一行內容
-• 自動播放：可設定每4秒自動顯示下一行
-
-📱 觸控手勢操作
-👆 單擊：等同空白鍵，進入記憶模式或顯示下一行
-👈👉 左右滑動：調整欄數 (→右滑增加，←左滑減少)
-👆👇 上下滑動：調整字型 (↑上滑放大，↓下滑縮小)
-
-⌨️ 鍵盤快捷鍵
-Space：記憶模式切換/顯示下一行
-R：重置 | M：記憶模式切換 | A：自動播放切換
-C：複製全部內容 | +/-：放大/縮小字型 | 1-6：直接設定欄數
+        <h2>📖 瑜伽練習頁面使用說明</h2>
+        
+        <h3>⚡ 快速操作</h3>
+        <p><strong>💻 電腦：</strong>Space鍵=記憶模式 | R鍵=重置 | M鍵=記憶切換</p>
+        <p><strong>📱 觸控：</strong>雙擊=記憶模式 | 左右上下滑動=系統預設捲動</p>
+        
+        <h3>📝 記憶功能</h3>
+        <p><strong>☐ Checkbox：</strong>點擊項目前的 checkbox 標記為已記得</p>
+        <p><strong>☐ 段落按鈕：</strong>點擊段落標題前的小按鈕可切換整段記憶狀態</p>
+        <p><strong>記憶模式：</strong>啟動後只顯示未記得的項目，逐項顯示</p>
+        
+        <h3>🎯 Memory模式顯示邏輯</h3>
+        <p>• <strong>順序顯示：</strong>按順序逐項顯示未記得的內容</p>
+        <p>• <strong>行級控制：</strong>每次按空白鍵或M鍵顯示下一行內容</p>
+        <p>• <strong>自動播放：</strong>可調整速度自動顯示下一行</p>
+        
+        <h3>📱 觸控操作</h3>
+        <p><strong>👆 雙擊：</strong>等同空白鍵，進入記憶模式或顯示下一行</p>
+               
+        <h3>⌨️ 鍵盤快捷鍵</h3>
+        <p><strong>Space：</strong>記憶模式切換/顯示下一行</p>
+        <p><strong>M：</strong>記憶模式切換</p>
+        <p><strong>A：</strong>自動播放切換</p>
+        <p><strong>R：</strong>重置（保留已記得項目，不重設字型和欄數）</p>
+        <p><strong>C：</strong>複製全部內容</p>
+        <p><strong>+/-：</strong>放大/縮小字型</p>
+        <p><strong>1-6：</strong>直接設定欄數</p>
+        
+        <h3>🎛️ 界面控制</h3>
+        <p><strong>欄數切換：</strong>可在 1-6 欄間自由切換，有分隔線區分</p>
+        <p><strong>字型調整：</strong>支援 6-128px 範圍調整</p>
+        <p><strong>自動播放：</strong>支援 60-200 BPM 速度調整</p>
       `;
 
-      alert(helpContent);
+      const modal = document.getElementById('helpModal');
+      const content = document.getElementById('helpContent');
+      const closeBtn = document.querySelector('.help-close');
+      
+      content.innerHTML = helpContent;
+      modal.style.display = 'block';
+      
+      // 點擊關閉按鈕
+      closeBtn.onclick = function() {
+        modal.style.display = 'none';
+      }
+      
+      // 點擊模態框外部關閉
+      window.onclick = function(event) {
+        if (event.target == modal) {
+          modal.style.display = 'none';
+        }
+      }
     }
 
     function toggleAutoPlay(){
@@ -960,8 +1095,8 @@ C：複製全部內容 | +/-：放大/縮小字型 | 1-6：直接設定欄數
     autoPlayBtn.addEventListener('click', (e)=>{ toggleAutoPlay(); });
     resetMemBtn.addEventListener('click', resetMem);
     copyBtn.addEventListener('click', copyAll);
-    fontDecBtn.addEventListener('click', ()=>{ changeFont(-1); });
-    fontIncBtn.addEventListener('click', ()=>{ changeFont(1); });
+    // fontDecBtn.addEventListener('click', ()=>{ changeFont(-1); });
+    // fontIncBtn.addEventListener('click', ()=>{ changeFont(1); });
     toggleToolbarBtn.addEventListener('click', toggleToolbar);
     helpBtn.addEventListener('click', showHelp);
 
@@ -980,8 +1115,8 @@ C：複製全部內容 | +/-：放大/縮小字型 | 1-6：直接設定欄數
     });
     resetMemBtnNarrow.addEventListener('click', resetMem);
     copyBtnNarrow.addEventListener('click', copyAll);
-    fontDecBtnNarrow.addEventListener('click', ()=>{ changeFont(-1); });
-    fontIncBtnNarrow.addEventListener('click', ()=>{ changeFont(1); });
+    // fontDecBtnNarrow.addEventListener('click', ()=>{ changeFont(-1); });
+    // fontIncBtnNarrow.addEventListener('click', ()=>{ changeFont(1); });
     helpBtnNarrow.addEventListener('click', showHelp);
 
     window.addEventListener('load', ()=>{
